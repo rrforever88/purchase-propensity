@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Customer Propensity Portal</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --surface2:  #21263a;
+      --border:    #2a2f45;
+      --text:      #e2e8f0;
+      --text-muted:#8892a4;
+      --accent:    #4f8ef7;
+      --high:      #e74c3c;
+      --medium:    #f39c12;
+      --low:       #2ecc71;
+      --high-bg:   rgba(231,76,60,0.12);
+      --medium-bg: rgba(243,156,18,0.12);
+      --low-bg:    rgba(46,204,113,0.12);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 24px 32px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .logo {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, #4f8ef7, #7c5cfc);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.3px; }
+    header p  { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Layout ── */
+    .app { display: flex; height: calc(100vh - 83px); overflow: hidden; }
+    .main { flex: 1; overflow-y: auto; padding: 24px 32px; }
+
+    /* ── Stats bar ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+    }
+    .stat-card .label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; }
+    .stat-card .value { font-size: 1.9rem; font-weight: 700; margin-top: 4px; }
+    .stat-card.high   .value { color: var(--high); }
+    .stat-card.medium .value { color: var(--medium); }
+    .stat-card.low    .value { color: var(--low); }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 380px;
+    }
+    .search-wrap svg {
+      position: absolute;
+      left: 12px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    input[type="search"] {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.85rem;
+      padding: 9px 14px 9px 38px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="search"]:focus { border-color: var(--accent); }
+    input[type="search"]::placeholder { color: var(--text-muted); }
+
+    .count-label { font-size: 0.78rem; color: var(--text-muted); margin-left: auto; }
+
+    /* ── Table ── */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      background: var(--surface2);
+      padding: 11px 16px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      text-align: left;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid var(--border);
+    }
+    thead th:hover { color: var(--text); }
+    thead th .sort-icon { margin-left: 4px; opacity: 0.4; font-size: 0.7rem; }
+    thead th.active   { color: var(--accent); }
+    thead th.active .sort-icon { opacity: 1; }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody tr.selected { background: rgba(79,142,247,0.08); }
+
+    td {
+      padding: 12px 16px;
+      font-size: 0.84rem;
+      vertical-align: middle;
+    }
+    td.company { font-weight: 600; }
+    td.tenure  { color: var(--text-muted); }
+    td.charges { font-variant-numeric: tabular-nums; }
+
+    /* Score bar */
+    .score-cell { min-width: 130px; }
+    .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .score-bar-bg {
+      flex: 1; height: 6px;
+      background: var(--border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .score-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+    .score-num { font-size: 0.78rem; font-weight: 600; width: 26px; text-align: right; flex-shrink: 0; }
+
+    /* Badge */
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .badge.High   { background: var(--high-bg);   color: var(--high); }
+    .badge.Medium { background: var(--medium-bg); color: var(--medium); }
+    .badge.Low    { background: var(--low-bg);    color: var(--low); }
+
+    /* ── Detail Panel ── */
+    .detail-panel {
+      width: 320px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      overflow-y: auto;
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      display: flex;
+      flex-direction: column;
+    }
+    .detail-panel.open { transform: translateX(0); }
+
+    .panel-header {
+      padding: 20px 20px 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .panel-header h2 { font-size: 1rem; font-weight: 700; line-height: 1.3; }
+    .close-btn {
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; font-size: 1.1rem; padding: 2px;
+      line-height: 1; flex-shrink: 0;
+    }
+    .close-btn:hover { color: var(--text); }
+
+    .score-display {
+      margin: 20px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+    .score-display .big-score {
+      font-size: 3.5rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .score-display .score-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-top: 6px;
+    }
+    .score-display .tier-badge { margin-top: 10px; }
+
+    .panel-fields { padding: 0 20px 20px; }
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+    }
+    .field-row:last-child { border-bottom: none; }
+    .field-key  { font-size: 0.75rem; color: var(--text-muted); flex-shrink: 0; }
+    .field-val  { font-size: 0.82rem; font-weight: 500; text-align: right; }
+
+    /* ── Loading / Error ── */
+    .state-overlay {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 80px 20px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background: rgba(231,76,60,0.1);
+      border: 1px solid rgba(231,76,60,0.3);
+      border-radius: 10px;
+      padding: 16px 20px;
+      color: #f87171;
+      font-size: 0.85rem;
+      max-width: 480px;
+    }
+    .error-box strong { display: block; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">&#9889;</div>
+  <div>
+    <h1>Customer Propensity Portal</h1>
+    <p>ML-Powered Purchase Likelihood Scoring</p>
+  </div>
+</header>
+
+<div class="app">
+  <div class="main">
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat-card">
+        <div class="label">Total Accounts</div>
+        <div class="value" id="stat-total">—</div>
+      </div>
+      <div class="stat-card high">
+        <div class="label">High Risk</div>
+        <div class="value" id="stat-high">—</div>
+      </div>
+      <div class="stat-card medium">
+        <div class="label">Medium Risk</div>
+        <div class="value" id="stat-medium">—</div>
+      </div>
+      <div class="stat-card low">
+        <div class="label">Low Risk</div>
+        <div class="value" id="stat-low">—</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="search" id="search" placeholder="Search accounts…" />
+      </div>
+      <span class="count-label" id="count-label"></span>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap" id="table-container">
+      <div class="state-overlay"><div class="spinner"></div><span>Loading accounts…</span></div>
+    </div>
+  </div>
+
+  <!-- Detail panel -->
+  <div class="detail-panel" id="detail-panel">
+    <div class="panel-header">
+      <h2 id="panel-company">—</h2>
+      <button class="close-btn" id="close-panel" title="Close">&#x2715;</button>
+    </div>
+    <div class="score-display">
+      <div class="big-score" id="panel-score">—</div>
+      <div class="score-label">Propensity Score</div>
+      <div class="tier-badge" id="panel-tier-badge"></div>
+    </div>
+    <div class="panel-fields" id="panel-fields"></div>
+  </div>
+</div>
+
+<script>
+  const API_URL = "https://your-render-url.onrender.com";
+
+  // ── State ──────────────────────────────────────────────────
+  let allAccounts = [];
+  let sortKey     = "propensity_score";
+  let sortDir     = -1; // -1 = desc, 1 = asc
+  let query       = "";
+  let selectedId  = null;
+
+  // ── Column definitions ─────────────────────────────────────
+  const COLS = [
+    { key: "company_name",     label: "Company",          cls: "company" },
+    { key: "contract_type",    label: "Contract Type",    cls: "" },
+    { key: "internet_service", label: "Internet",         cls: "" },
+    { key: "tenure_months",    label: "Tenure (mo)",      cls: "tenure" },
+    { key: "monthly_charges",  label: "Monthly ($)",      cls: "charges" },
+    { key: "propensity_score", label: "Propensity Score", cls: "score-cell" },
+    { key: "risk_tier",        label: "Risk Tier",        cls: "" },
+  ];
+
+  // ── Helpers ────────────────────────────────────────────────
+  function tierColor(tier) {
+    return tier === "High" ? "var(--high)" : tier === "Medium" ? "var(--medium)" : "var(--low)";
+  }
+
+  function scoreColor(score) {
+    if (score >= 70) return "var(--high)";
+    if (score >= 40) return "var(--medium)";
+    return "var(--low)";
+  }
+
+  function fmt(key, val) {
+    if (key === "monthly_charges" || key === "total_charges") return `$${Number(val).toFixed(2)}`;
+    return val;
+  }
+
+  // ── Stats ──────────────────────────────────────────────────
+  function updateStats(accounts) {
+    document.getElementById("stat-total").textContent  = accounts.length;
+    document.getElementById("stat-high").textContent   = accounts.filter(a => a.risk_tier === "High").length;
+    document.getElementById("stat-medium").textContent = accounts.filter(a => a.risk_tier === "Medium").length;
+    document.getElementById("stat-low").textContent    = accounts.filter(a => a.risk_tier === "Low").length;
+  }
+
+  // ── Render table ───────────────────────────────────────────
+  function getFiltered() {
+    const q = query.toLowerCase();
+    return allAccounts.filter(a =>
+      !q ||
+      a.company_name.toLowerCase().includes(q) ||
+      a.contract_type.toLowerCase().includes(q) ||
+      a.internet_service.toLowerCase().includes(q) ||
+      a.risk_tier.toLowerCase().includes(q)
+    );
+  }
+
+  function getSorted(rows) {
+    return [...rows].sort((a, b) => {
+      const av = a[sortKey], bv = b[sortKey];
+      if (typeof av === "number") return sortDir * (av - bv);
+      return sortDir * String(av).localeCompare(String(bv));
+    });
+  }
+
+  function renderTable() {
+    const container = document.getElementById("table-container");
+    const rows = getSorted(getFiltered());
+
+    document.getElementById("count-label").textContent =
+      `${rows.length} of ${allAccounts.length} accounts`;
+
+    if (rows.length === 0) {
+      container.innerHTML = `<div class="state-overlay"><span>No accounts match your search.</span></div>`;
+      return;
+    }
+
+    const thead = COLS.map(c => {
+      const active = c.key === sortKey ? " active" : "";
+      const icon   = c.key === sortKey ? (sortDir === -1 ? "▼" : "▲") : "↕";
+      return `<th class="${active}" data-key="${c.key}">${c.label} <span class="sort-icon">${icon}</span></th>`;
+    }).join("");
+
+    const tbody = rows.map(a => {
+      const sel = a.account_id === selectedId ? " selected" : "";
+      const cells = COLS.map(c => {
+        let content;
+        if (c.key === "propensity_score") {
+          const color = scoreColor(a.propensity_score);
+          content = `
+            <div class="score-bar-wrap">
+              <div class="score-bar-bg">
+                <div class="score-bar-fill" style="width:${a.propensity_score}%;background:${color}"></div>
+              </div>
+              <span class="score-num" style="color:${color}">${a.propensity_score}</span>
+            </div>`;
+        } else if (c.key === "risk_tier") {
+          content = `<span class="badge ${a.risk_tier}">${a.risk_tier}</span>`;
+        } else if (c.key === "monthly_charges") {
+          content = `$${a.monthly_charges.toFixed(2)}`;
+        } else {
+          content = a[c.key];
+        }
+        return `<td class="${c.cls}">${content}</td>`;
+      }).join("");
+      return `<tr${sel} data-id="${a.account_id}">${cells}</tr>`;
+    }).join("");
+
+    container.innerHTML = `
+      <table>
+        <thead><tr>${thead}</tr></thead>
+        <tbody>${tbody}</tbody>
+      </table>`;
+
+    // Sort click
+    container.querySelectorAll("thead th").forEach(th => {
+      th.addEventListener("click", () => {
+        const k = th.dataset.key;
+        if (sortKey === k) sortDir *= -1;
+        else { sortKey = k; sortDir = k === "propensity_score" ? -1 : 1; }
+        renderTable();
+      });
+    });
+
+    // Row click
+    container.querySelectorAll("tbody tr").forEach(tr => {
+      tr.addEventListener("click", () => {
+        const id = tr.dataset.id;
+        const account = allAccounts.find(a => a.account_id === id);
+        if (account) openPanel(account);
+      });
+    });
+  }
+
+  // ── Detail panel ───────────────────────────────────────────
+  const PANEL_FIELDS = [
+    { key: "account_id",       label: "Account ID" },
+    { key: "contract_type",    label: "Contract" },
+    { key: "internet_service", label: "Internet Service" },
+    { key: "tenure_months",    label: "Tenure" },
+    { key: "monthly_charges",  label: "Monthly Charges" },
+    { key: "total_charges",    label: "Total Charges" },
+    { key: "tech_support",     label: "Tech Support" },
+    { key: "online_security",  label: "Online Security" },
+  ];
+
+  function openPanel(account) {
+    selectedId = account.account_id;
+    renderTable(); // refresh selection highlight
+
+    document.getElementById("panel-company").textContent = account.company_name;
+
+    const score = account.propensity_score;
+    const color = scoreColor(score);
+    document.getElementById("panel-score").textContent = score;
+    document.getElementById("panel-score").style.color = color;
+    document.getElementById("panel-tier-badge").innerHTML =
+      `<span class="badge ${account.risk_tier}">${account.risk_tier}</span>`;
+
+    const fields = PANEL_FIELDS.map(f => {
+      let val = account[f.key];
+      if (f.key === "monthly_charges" || f.key === "total_charges") val = `$${Number(val).toFixed(2)}`;
+      if (f.key === "tenure_months") val = `${val} months`;
+      return `<div class="field-row">
+        <span class="field-key">${f.label}</span>
+        <span class="field-val">${val}</span>
+      </div>`;
+    }).join("");
+    document.getElementById("panel-fields").innerHTML = fields;
+
+    document.getElementById("detail-panel").classList.add("open");
+  }
+
+  function closePanel() {
+    selectedId = null;
+    document.getElementById("detail-panel").classList.remove("open");
+    renderTable();
+  }
+
+  document.getElementById("close-panel").addEventListener("click", closePanel);
+
+  // ── Search ─────────────────────────────────────────────────
+  document.getElementById("search").addEventListener("input", e => {
+    query = e.target.value;
+    renderTable();
+  });
+
+  // ── Fetch ──────────────────────────────────────────────────
+  async function loadAccounts() {
+    const container = document.getElementById("table-container");
+    try {
+      const res = await fetch(`${API_URL}/accounts`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      allAccounts = await res.json();
+      updateStats(allAccounts);
+      renderTable();
+    } catch (err) {
+      container.innerHTML = `
+        <div class="state-overlay">
+          <div class="error-box">
+            <strong>Failed to load accounts</strong>
+            ${err.message}<br><br>
+            Make sure the API is running and <code>API_URL</code> is set correctly.
+          </div>
+        </div>`;
+      document.getElementById("stat-total").textContent  = "—";
+      document.getElementById("stat-high").textContent   = "—";
+      document.getElementById("stat-medium").textContent = "—";
+      document.getElementById("stat-low").textContent    = "—";
+    }
+  }
+
+  loadAccounts();
+</script>
+</body>
+</html>
