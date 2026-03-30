@@ -1,0 +1,39 @@
+{
+  "feature_names": [
+    "gender",
+    "SeniorCitizen",
+    "Partner",
+    "Dependents",
+    "tenure",
+    "PhoneService",
+    "MultipleLines",
+    "OnlineSecurity",
+    "OnlineBackup",
+    "DeviceProtection",
+    "TechSupport",
+    "StreamingTV",
+    "StreamingMovies",
+    "PaperlessBilling",
+    "MonthlyCharges",
+    "TotalCharges",
+    "Contract_Month-to-month",
+    "Contract_One year",
+    "Contract_Two year",
+    "InternetService_DSL",
+    "InternetService_Fiber optic",
+    "InternetService_No",
+    "PaymentMethod_Bank transfer (automatic)",
+    "PaymentMethod_Credit card (automatic)",
+    "PaymentMethod_Electronic check",
+    "PaymentMethod_Mailed check"
+  ],
+  "model_version": "1.0",
+  "auc_roc": 0.84,
+  "top_features": [
+    "Contract_Month-to-month",
+    "InternetService_Fiber optic",
+    "Contract_Two year",
+    "tenure",
+    "StreamingTV"
+  ]
+}
